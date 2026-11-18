@@ -1,0 +1,14 @@
+/* نماد اعتماد الکترونیکی */
+.eb{background:linear-gradient(180deg,var(--paper,#fbf5e4),#f6edd0);padding:26px 0 8px}
+.eb .box{max-width:900px;margin:0 auto;display:flex;align-items:center;gap:22px;background:#fff;border:1px solid var(--ln,rgba(47,77,26,.18));border-radius:26px;padding:16px 24px;box-shadow:0 24px 40px -30px rgba(28,45,16,.55);text-align:right}
+.eb .seal{flex:none;display:grid;place-items:center;min-width:96px;min-height:96px;border-radius:18px;background:#f7f7f2;border:1px dashed var(--ln,rgba(47,77,26,.25));padding:6px}
+.eb .seal img{display:block;max-width:90px;height:auto}
+.eb h2{font:400 clamp(20px,2.6vw,27px)/1.5 'Lalezar','Vazirmatn',sans-serif;margin:0;color:var(--deep,#2f4d1a)}
+.eb p{margin:2px 0 8px;color:var(--mut,#5a6a49);font-size:14.5px}
+.eb ul{list-style:none;margin:0;padding:0;display:flex;gap:8px 16px;flex-wrap:wrap;font-size:13.5px;font-weight:700}
+.eb li:before{content:"✓";color:var(--pist,#5b7f2a);font-weight:900;margin-left:6px}
+.fseal{display:flex;justify-content:center;margin:0 0 14px}
+.fseal .seal{display:grid;place-items:center;min-width:80px;min-height:80px;background:#fff;border-radius:14px;padding:5px;box-shadow:0 8px 20px -12px rgba(28,45,16,.5)}
+.fseal img{display:block;max-width:76px;height:auto}
+.trust .en{background:rgba(169,197,60,.18);border-radius:99px;padding:0 10px;font-weight:800}
+@media(max-width:640px){.eb .box{flex-direction:column;text-align:center;padding:18px 16px}.eb ul{justify-content:center}}

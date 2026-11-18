@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /backend/
+Disallow: /downloads/
+Disallow: /admin/
+Disallow: /data/
+
+Sitemap: https://pesteh-bazar.ir/sitemap.xml

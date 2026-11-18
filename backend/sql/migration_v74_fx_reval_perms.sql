@@ -1,0 +1,3 @@
+-- v74 (تسعیر ارز حرفه‌ای، مرحلهٔ ۶) — مستندات دستی. اجرای واقعی: pb_mig_74_fx_reval_perms (PHP، idempotent).
+-- کلیدهای مجوز جدید: accounting.fx_reval.apply («اعمال تسعیر ارز») و accounting.fx_reval.reverse («ابطال تسعیر ارز»).
+-- هر نقش (جدول roles، ستون perms = JSON) که accounting.post دارد این دو کلید را هم اضافه می‌گیرد. جدول/ستون جدیدی ساخته نمی‌شود.

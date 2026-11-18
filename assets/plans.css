@@ -1,0 +1,20 @@
+.durs{display:inline-flex;gap:6px;background:#fff;border:1px solid var(--ln);border-radius:99px;padding:5px;margin-bottom:30px}
+.durs button{font:800 14.5px 'Vazirmatn';border:0;background:none;color:var(--ink);padding:8px 20px;border-radius:99px;cursor:pointer}.durs button[aria-pressed=true]{background:var(--ink);color:var(--shell)}
+.pq{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:-8px 0 30px}.pq button{font:700 14.5px 'Vazirmatn';padding:10px 18px;border-radius:99px;border:2px solid var(--ln);background:#fff;cursor:pointer}.pq button.on{border-color:var(--pist);background:#eef4d8}
+.plans2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;max-width:900px;margin:0 auto;perspective:1200px;text-align:right}
+.pc{position:relative;background:#fff;border:1px solid var(--ln);border-radius:28px;padding:34px 26px 28px;transition:transform .3s,box-shadow .3s}
+.pc:hover,.pc.pick{transform:translateY(-8px) rotateX(3deg);box-shadow:0 40px 50px -30px rgba(28,45,16,.55)}
+.pc.fx{background:linear-gradient(160deg,#2f4d1a,#1c2d10);color:var(--shell);border:2px solid var(--lime)}.pc.pick:not(.fx){border:2px solid var(--pist)}
+.pc h3{font-size:32px}.pc .d{font-size:14px;opacity:.8;margin:2px 0 14px}
+.pc .pv{font:400 34px/1.3 'Lalezar';display:block;color:var(--pist)}.pc.fx .pv{color:var(--lime)}.pc .pm{font-size:13.5px;opacity:.8}.pc .ps{display:block;font-size:12.5px;font-weight:800;color:var(--pist);min-height:20px}.pc.fx .ps{color:var(--lime)}
+.pc ul{list-style:none;margin:16px 0 20px;padding:0;display:grid;gap:7px;font-size:14.5px}.pc li:before{content:"✓";color:var(--pist);font-weight:900;margin-left:8px}.pc.fx li:before{color:var(--lime)}.pc li.no{opacity:.45}.pc li.no:before{content:"—";color:inherit}
+.pc li.ai{font-weight:800}.ai:after{content:"جدید";font-size:11px;background:linear-gradient(90deg,#a9c53c,#74d0ff,#a9c53c);background-size:200%;color:#1c2d10;padding:0 8px;border-radius:99px;margin-right:8px;animation:sh 3s linear infinite}@keyframes sh{to{background-position:200%}}
+.rb{position:absolute;top:-14px;right:24px;background:var(--lime);color:var(--ink);font-size:12.5px;font-weight:800;padding:2px 14px;border-radius:99px}.pc .btn{width:100%;padding:13px}
+.pn{max-width:900px;margin:22px auto 0;font-size:14px;color:var(--mut);text-align:center}.fx .pc,.dark .pn{color:#c3d3aa}
+@media(max-width:860px){.plans2{grid-template-columns:minmax(0,1fr)}.pc.fx{order:-1}}
+.pc .gn{font-size:13.5px;font-weight:800;color:var(--pist);margin:-6px 0 14px}.pc.fx .gn{color:var(--lime)}
+.cmpw{max-width:900px;margin:30px auto 0;overflow-x:auto;border:1px solid var(--ln);border-radius:16px;background:#fff}
+.cmp{width:100%;border-collapse:collapse;font-size:14px;text-align:center;min-width:620px}.cmp caption{font:800 15px 'Vazirmatn';padding:12px;text-align:right}
+.cmp th,.cmp td{padding:9px 12px;border-top:1px solid var(--ln)}.cmp thead th{background:rgba(91,127,42,.09);font-weight:800}.cmp tbody th{text-align:right;font-weight:700}
+.cmp td.y{color:var(--pist);font-weight:900}.cmp td.n{opacity:.4}
+

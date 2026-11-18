@@ -1,0 +1,28 @@
+/* بلوک قیمت (سایت + پیش‌نمایش پنل) */
+.pc{--pp-ac:var(--pist,#5b7f2a);--pp-hot:#c8501a;--pp-gold:#e7a823}
+.pc.fx{--pp-ac:var(--lime,#a9c53c);--pp-hot:#ffb86b;--pp-gold:#ffd86b}
+.pp{display:grid;gap:4px;margin:2px 0 4px}
+.pp-call{font:400 32px/1.3 'Lalezar','Vazirmatn',sans-serif;color:var(--pp-ac)}
+.pp-ladder{display:grid;gap:6px;margin:4px 0 8px}
+.pp-row{display:flex;align-items:center;gap:8px;font-size:13.5px;padding:7px 12px;border-radius:12px;background:rgba(91,127,42,.09);flex-wrap:wrap}
+.pc.fx .pp-row{background:rgba(255,255,255,.08)}
+.pp-row .pp-l{opacity:.85;flex:1 1 auto}
+.pp-row s{opacity:.6;text-decoration-thickness:2px;text-decoration-color:var(--pp-hot);font-weight:700}
+.pp-row .pp-v{font-weight:800}
+.pp-badge{background:var(--pp-hot);color:#fff;font-size:12px;font-weight:800;padding:0 10px;border-radius:99px;line-height:22px;white-space:nowrap}
+.pc.fx .pp-badge{color:#2a1500}
+.pp-d2{background:linear-gradient(90deg,rgba(231,168,35,.22),rgba(231,168,35,.08))!important;border:1px dashed var(--pp-gold)}
+.pp-d2 .pp-l{font-weight:800}
+.pp-b2{background:linear-gradient(90deg,#e7a823,#f3c34d);color:#3a2600!important;animation:ppglow 2.4s ease-in-out infinite}
+@keyframes ppglow{50%{box-shadow:0 0 0 5px rgba(231,168,35,.25)}}
+.pp-final{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pp-big{font:400 40px/1.25 'Lalezar','Vazirmatn',sans-serif;color:var(--pp-ac);letter-spacing:-.3px}
+.pp-final small{font-size:14px;font-weight:700;opacity:.8}
+.pp-tot{font-size:13.5px;color:var(--pp-ac);background:rgba(91,127,42,.10);border-radius:10px;padding:4px 12px;width:fit-content;max-width:100%}
+.pc.fx .pp-tot{background:rgba(169,197,60,.15)}
+.pp-tot b{font-weight:900}
+.pp-pm{font-size:13.5px;opacity:.8}
+.pp-timer{font-size:12.5px;font-weight:800;color:var(--pp-hot);margin-top:2px}
+.durs button{position:relative}
+.durs button .dt{display:inline-block;font-size:11px;font-weight:800;background:var(--pp-hot,#c8501a);color:#fff;padding:0 7px;border-radius:99px;margin-right:6px;line-height:18px}
+.durs button[aria-pressed=true] .dt{background:var(--lime,#a9c53c);color:var(--ink,#1c2d10)}

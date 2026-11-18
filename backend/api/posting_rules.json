@@ -1,0 +1,1736 @@
+{
+ "version": 1,
+ "_doc": [
+  "Declarative posting rules (DECISIONS B12). Interpreted by posting.php (PHP) and tests/oracle.py (Python) - keep both in sync.",
+  "rule: {id, doc_type, when?: expr, lines: [line]}.  All matching rules of one doc_type contribute lines to ONE voucher (source_type=doc_type, source_id=doc id).",
+  "line: {account: <role from pb_acc_roles()>, debit?: expr, credit?: expr, tafsili?: <dim key>, cost_center?: <dim key>, desc?: text, when?: expr}.  Zero lines are dropped.",
+  "expr: integer | \"@field\" (document field, integer rial/qty, missing=0) | {op, args:[expr..]}.",
+  "ops: add sub mul max min pos(x)=max(0,x) | divround(a,b) muldiv(a,b,c)=round_half_up(a*b/c) pct(amount, rate_milli)=round_half_up(amount*rate_milli/100000) | if(c,a,b) gt ge lt le eq ne and or not (booleans are 1/0).",
+  "Everything is an integer; no floats anywhere. Rates arrive as integers in thousandths of a percent (e.g. 9% -> 9000) from the document loader, never hard-coded here.",
+  "Line amounts must not be negative. Rounding policy (B1): if debit!=credit by at most round_tolerance rial, the difference is added to the largest line of the deficient side; more than that is a rule error.",
+  "Loaders (posting.php pb_posting_loaders) turn a document into {date, description, fields:{..}, dims:{key: tafsili_id|cost_center_id}}.",
+  "T16.3 fields: purchase{goods,discount,labor,transport,broker_us,vat_rate_milli,paid_cash,paid_bank,cheque_out}; sale{goods,discount,vat_rate_milli,cogs_raw,cogs_proc,broker_us,labor,transport,recv_cash,recv_bank,cheque_in}; sreturn{goods,vat_rate_milli,has_tax,tax_amount,inv_raw,inv_proc,refund_cash,refund_cheque}; preturn{goods,vat_rate_milli,has_tax,tax_amount,refund_cash,refund_cheque}. VAT base = goods - discount.",
+  "line.account_dim: key of ctx.dims holding an ACCOUNT id (T16.4 expenses use the chosen expense account); falls back to the role when the dim is 0/missing.",
+  "T16.4 fields: cheque_ev{amt,bank_charge,dir_recv,dir_iss,f_<from>,t_<to> flags (in_hand,deposited,pending,cleared,bounced,endorsed,returned,cancelled); dims party,endorsee,treasury}; inst_pay|inst_recv{amt,cash_amt,bank_amt}; loan{amt,k_given,k_taken,k_repay_in,k_repay_out}; expense{amt,pay_cash,pay_bank,pay_credit; dims exp_account,cc,party,treasury}; bpay{amt}; owner_draw{draw_cash,draw_bank,contrib_cash,contrib_bank}. Payments saved WITH purchase/sale docs are posted ONLY by the doc voucher (T16.3); cheque_ev/inst_* never repost them.",
+  "T16.5a fields: sep{in_raw,in_proc,labor,transport,abnormal} (output inventory = in_raw+in_proc+labor+transport-abnormal, EXACT identity of B9/A8; normal waste absorbed, abnormal expensed to waste_loss); proc_send{in_raw,in_proc} (paid order: our lots go to the processor -> inventory_at_processor); proc_recv{in_raw,in_proc,fee} (paid order received: outputs = input cost + fee, fee payable to processor tafsili party; at_processor cleared by the same inputs); proc_toll{charge} (received/toll order: service revenue = fee + waste charge, goods are off-balance, no inventory). Voucher dates: sep=sep_date, proc_send=order_date, proc_recv/proc_toll=receive_date.",
+  "T16.5c fields (contracts for modules not built yet; no loaders registered): fx_settle_recv|fx_settle_pay{carry=booked base amount of the settled receivable/payable, cash, bank=base amount actually moved; dims party; diff=paid-carry => fx_diff 5207 debit (loss) or credit (gain)}; fx_reval{ar_up,ar_down,ap_up,ap_down = base-currency revaluation deltas of monetary items at period-end rate; optional, B10; gain/loss go to fx_unrealized 5209 (unrealized), NOT fx_diff 5207 (realized)}; count_adj{short_raw,short_proc,over_raw,over_proc = lot cost value of count shortages/overages; Dr count_diff 5103 / Cr inventory (S19.T19.1 hook)}.",
+  "each (fx-reval step 3, optional on a line): {\"each\":\"groups\", account, debit/credit/when: exprs over the GROUP's fields, tafsili: <key in the group's dims>} => one line per member of loader ctx.groups = [{fields:{..}, dims:{..}, desc?}] (zero amounts dropped; missing/empty groups => no lines, no error). The group's dims[tafsili] becomes a direct tafsili_id on the line. Rule-level when still uses global fields. Lines without each behave exactly as before.",
+  "T17.1c: sale/purchase use stored document tax when fields has_tax=1 (tax_amount = total_tax, integer rial; exempt/zero/mixed/discount/surcharge computed by tax.php at save); otherwise legacy pct(base, vat_rate_milli)."
+ ],
+ "auto_status": "temporary",
+ "round_tolerance": 10,
+ "rules": [
+  {
+   "id": "purchase",
+   "doc_type": "purchase",
+   "lines": [
+    {
+     "account": "inventory",
+     "debit": {
+      "op": "add",
+      "args": [
+       {
+        "op": "pos",
+        "args": [
+         {
+          "op": "sub",
+          "args": [
+           "@goods",
+           "@discount"
+          ]
+         }
+        ]
+       },
+       "@labor",
+       "@transport",
+       "@broker_us"
+      ]
+     },
+     "desc": "موجودی خرید"
+    },
+    {
+     "account": "vat_in",
+     "debit": {
+      "op": "if",
+      "args": [
+       "@has_tax",
+       "@tax_amount",
+       {
+        "op": "pct",
+        "args": [
+         {
+          "op": "pos",
+          "args": [
+           {
+            "op": "sub",
+            "args": [
+             "@goods",
+             "@discount"
+            ]
+           }
+          ]
+         },
+         "@vat_rate_milli"
+        ]
+       }
+      ]
+     },
+     "desc": "مالیات ارزش افزوده خرید"
+    },
+    {
+     "account": "ap",
+     "credit": {
+      "op": "add",
+      "args": [
+       {
+        "op": "pos",
+        "args": [
+         {
+          "op": "sub",
+          "args": [
+           "@goods",
+           "@discount"
+          ]
+         }
+        ]
+       },
+       {
+        "op": "if",
+        "args": [
+         "@has_tax",
+         "@tax_amount",
+         {
+          "op": "pct",
+          "args": [
+           {
+            "op": "pos",
+            "args": [
+             {
+              "op": "sub",
+              "args": [
+               "@goods",
+               "@discount"
+              ]
+             }
+            ]
+           },
+           "@vat_rate_milli"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "بدهی به فروشنده"
+    },
+    {
+     "account": "cash",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@labor",
+       "@transport"
+      ]
+     },
+     "desc": "کارگری و حمل خرید"
+    },
+    {
+     "account": "ap",
+     "credit": "@broker_us",
+     "tafsili": "broker",
+     "desc": "کارمزد دلال خرید"
+    },
+    {
+     "account": "ap",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@paid_cash",
+       "@paid_bank",
+       "@cheque_out"
+      ]
+     },
+     "tafsili": "party",
+     "desc": "پرداخت هنگام خرید"
+    },
+    {
+     "account": "cash",
+     "credit": "@paid_cash"
+    },
+    {
+     "account": "bank",
+     "credit": "@paid_bank"
+    },
+    {
+     "account": "cheque_payable",
+     "credit": "@cheque_out"
+    }
+   ]
+  },
+  {
+   "id": "sale",
+   "doc_type": "sale",
+   "lines": [
+    {
+     "account": "ar",
+     "debit": {
+      "op": "add",
+      "args": [
+       {
+        "op": "pos",
+        "args": [
+         {
+          "op": "sub",
+          "args": [
+           "@goods",
+           "@discount"
+          ]
+         }
+        ]
+       },
+       {
+        "op": "if",
+        "args": [
+         "@has_tax",
+         "@tax_amount",
+         {
+          "op": "pct",
+          "args": [
+           {
+            "op": "pos",
+            "args": [
+             {
+              "op": "sub",
+              "args": [
+               "@goods",
+               "@discount"
+              ]
+             }
+            ]
+           },
+           "@vat_rate_milli"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "بدهی خریدار"
+    },
+    {
+     "account": "sales_returns",
+     "debit": "@discount",
+     "desc": "تخفیف فروش"
+    },
+    {
+     "account": "sales",
+     "credit": "@goods",
+     "desc": "فروش"
+    },
+    {
+     "account": "vat_out",
+     "credit": {
+      "op": "if",
+      "args": [
+       "@has_tax",
+       "@tax_amount",
+       {
+        "op": "pct",
+        "args": [
+         {
+          "op": "pos",
+          "args": [
+           {
+            "op": "sub",
+            "args": [
+             "@goods",
+             "@discount"
+            ]
+           }
+          ]
+         },
+         "@vat_rate_milli"
+        ]
+       }
+      ]
+     },
+     "desc": "مالیات ارزش افزوده فروش"
+    },
+    {
+     "account": "cogs",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@cogs_raw",
+       "@cogs_proc"
+      ]
+     },
+     "desc": "بهای تمام‌شده فروش"
+    },
+    {
+     "account": "inventory",
+     "credit": "@cogs_raw"
+    },
+    {
+     "account": "inventory_processed",
+     "credit": "@cogs_proc"
+    },
+    {
+     "account": "broker_expense",
+     "debit": "@broker_us",
+     "desc": "کارمزد دلال فروش"
+    },
+    {
+     "account": "ap",
+     "credit": "@broker_us",
+     "tafsili": "broker",
+     "desc": "کارمزد دلال فروش"
+    },
+    {
+     "account": "labor",
+     "debit": "@labor",
+     "desc": "کارگری فروش"
+    },
+    {
+     "account": "transport",
+     "debit": "@transport",
+     "desc": "حمل فروش"
+    },
+    {
+     "account": "cash",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@labor",
+       "@transport"
+      ]
+     }
+    },
+    {
+     "account": "cash",
+     "debit": "@recv_cash"
+    },
+    {
+     "account": "bank",
+     "debit": "@recv_bank"
+    },
+    {
+     "account": "cheque_in_hand",
+     "debit": "@cheque_in"
+    },
+    {
+     "account": "ar",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@recv_cash",
+       "@recv_bank",
+       "@cheque_in"
+      ]
+     },
+     "tafsili": "party",
+     "desc": "دریافت هنگام فروش"
+    }
+   ]
+  },
+  {
+   "id": "sreturn",
+   "doc_type": "sreturn",
+   "lines": [
+    {
+     "account": "sales_returns",
+     "debit": "@goods",
+     "desc": "برگشت از فروش"
+    },
+    {
+     "account": "vat_out",
+     "debit": {
+      "op": "if",
+      "args": [
+       "@has_tax",
+       "@tax_amount",
+       {
+        "op": "pct",
+        "args": [
+         "@goods",
+         "@vat_rate_milli"
+        ]
+       }
+      ]
+     },
+     "desc": "برگشت مالیات فروش"
+    },
+    {
+     "account": "ar",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@goods",
+       {
+        "op": "if",
+        "args": [
+         "@has_tax",
+         "@tax_amount",
+         {
+          "op": "pct",
+          "args": [
+           "@goods",
+           "@vat_rate_milli"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "کاهش بدهی خریدار"
+    },
+    {
+     "account": "inventory",
+     "debit": "@inv_raw",
+     "desc": "بازگشت موجودی به بهای اولیه"
+    },
+    {
+     "account": "inventory_processed",
+     "debit": "@inv_proc"
+    },
+    {
+     "account": "cogs",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@inv_raw",
+       "@inv_proc"
+      ]
+     },
+     "desc": "برگشت بهای تمام‌شده"
+    },
+    {
+     "account": "ar",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@refund_cash",
+       "@refund_cheque"
+      ]
+     },
+     "tafsili": "party",
+     "desc": "بازپرداخت به خریدار"
+    },
+    {
+     "account": "cash",
+     "credit": "@refund_cash"
+    },
+    {
+     "account": "cheque_payable",
+     "credit": "@refund_cheque"
+    }
+   ]
+  },
+  {
+   "id": "preturn",
+   "doc_type": "preturn",
+   "lines": [
+    {
+     "account": "ap",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@goods",
+       {
+        "op": "if",
+        "args": [
+         "@has_tax",
+         "@tax_amount",
+         {
+          "op": "pct",
+          "args": [
+           "@goods",
+           "@vat_rate_milli"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "کاهش بدهی به فروشنده"
+    },
+    {
+     "account": "inventory",
+     "credit": "@goods",
+     "desc": "برگشت از خرید"
+    },
+    {
+     "account": "vat_in",
+     "credit": {
+      "op": "if",
+      "args": [
+       "@has_tax",
+       "@tax_amount",
+       {
+        "op": "pct",
+        "args": [
+         "@goods",
+         "@vat_rate_milli"
+        ]
+       }
+      ]
+     },
+     "desc": "برگشت مالیات خرید"
+    },
+    {
+     "account": "cash",
+     "debit": "@refund_cash"
+    },
+    {
+     "account": "cheque_in_hand",
+     "debit": "@refund_cheque"
+    },
+    {
+     "account": "ap",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@refund_cash",
+       "@refund_cheque"
+      ]
+     },
+     "tafsili": "party",
+     "desc": "دریافت از فروشنده"
+    }
+   ]
+  },
+  {
+   "id": "cheque_ev",
+   "doc_type": "cheque_ev",
+   "lines": [
+    {
+     "account": "cheque_collect",
+     "debit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_in_hand",
+       "@t_deposited"
+      ]
+     },
+     "desc": "چک در جریان وصول"
+    },
+    {
+     "account": "bank",
+     "debit": "@bank_amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@t_cleared"
+      ]
+     },
+     "tafsili": "treasury",
+     "desc": "وصول چک به حساب بانکی"
+    },
+    {
+     "account": "ar",
+     "debit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       {
+        "op": "or",
+        "args": [
+         "@t_bounced",
+         "@t_returned"
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "بازگشت مطالبه (چک برگشتی/عودت)"
+    },
+    {
+     "account": "ap",
+     "debit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@t_endorsed"
+      ]
+     },
+     "tafsili": "endorsee",
+     "desc": "خرج چک به طرف‌حساب"
+    },
+    {
+     "account": "cheque_in_hand",
+     "credit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_in_hand"
+      ]
+     },
+     "desc": "خروج چک از اسناد در دست"
+    },
+    {
+     "account": "cheque_collect",
+     "credit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_deposited"
+      ]
+     },
+     "desc": "خروج چک از جریان وصول"
+    },
+    {
+     "account": "cheque_in_hand",
+     "debit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_cleared",
+       "@t_in_hand"
+      ]
+     },
+     "desc": "لغو وصول چک"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank_amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_cleared",
+       "@t_in_hand"
+      ]
+     },
+     "tafsili": "treasury",
+     "desc": "لغو وصول چک"
+    },
+    {
+     "account": "cheque_payable",
+     "debit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@f_pending"
+      ]
+     },
+     "desc": "تسویه/برگشت چک پرداختنی"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank_amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@t_cleared"
+      ]
+     },
+     "tafsili": "treasury",
+     "desc": "پاس شدن چک پرداختی"
+    },
+    {
+     "account": "ap",
+     "credit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       {
+        "op": "or",
+        "args": [
+         "@t_bounced",
+         "@t_cancelled"
+        ]
+       }
+      ]
+     },
+     "tafsili": "party",
+     "desc": "بازگشت بدهی (چک برگشتی/ابطال)"
+    },
+    {
+     "account": "bank",
+     "debit": "@bank_amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@f_cleared",
+       "@t_pending"
+      ]
+     },
+     "tafsili": "treasury",
+     "desc": "لغو پاس چک پرداختی"
+    },
+    {
+     "account": "cheque_payable",
+     "credit": "@amt",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@f_cleared",
+       "@t_pending"
+      ]
+     },
+     "desc": "لغو پاس چک پرداختی"
+    },
+    {
+     "account": "bank_charges",
+     "debit": "@bank_charge",
+     "when": "@t_bounced",
+     "desc": "کارمزد برگشت چک"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank_charge",
+     "when": "@t_bounced",
+     "tafsili": "treasury",
+     "desc": "کارمزد برگشت چک"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_pos",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@t_cleared"
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_neg",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@t_cleared"
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_pos",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_cleared"
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_neg",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_recv",
+       "@f_cleared"
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_pos",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@t_cleared"
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_neg",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@t_cleared"
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_pos",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@f_cleared"
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (وصول/پاس چک)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_neg",
+     "when": {
+      "op": "and",
+      "args": [
+       "@dir_iss",
+       "@f_cleared"
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (وصول/پاس چک)"
+    }
+   ]
+  },
+  {
+   "id": "inst_pay",
+   "doc_type": "inst_pay",
+   "lines": [
+    {
+     "account": "cash",
+     "credit": "@cash_amt",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank_amt",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "ap",
+     "debit": "@amt",
+     "tafsili": "party",
+     "desc": "پرداخت قسط"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_pos",
+     "desc": "زیان تفاوت نرخ ارز (قسط)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_neg",
+     "desc": "سود تفاوت نرخ ارز (قسط)"
+    }
+   ]
+  },
+  {
+   "id": "inst_recv",
+   "doc_type": "inst_recv",
+   "lines": [
+    {
+     "account": "cash",
+     "debit": "@cash_amt",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "bank",
+     "debit": "@bank_amt",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "ar",
+     "credit": "@amt",
+     "tafsili": "party",
+     "desc": "دریافت قسط"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@fxd_pos",
+     "desc": "سود تفاوت نرخ ارز (قسط)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@fxd_neg",
+     "desc": "زیان تفاوت نرخ ارز (قسط)"
+    }
+   ]
+  },
+  {
+   "id": "loan",
+   "doc_type": "loan",
+   "lines": [
+    {
+     "account": "ar",
+     "debit": "@amt",
+     "when": "@k_given",
+     "tafsili": "party",
+     "desc": "قرض اعطایی"
+    },
+    {
+     "account": "ar",
+     "credit": "@amt",
+     "when": "@k_repay_in",
+     "tafsili": "party",
+     "desc": "دریافت بازپرداخت قرض"
+    },
+    {
+     "account": "loans",
+     "credit": "@amt",
+     "when": "@k_taken",
+     "tafsili": "party",
+     "desc": "قرض دریافتی"
+    },
+    {
+     "account": "loans",
+     "debit": "@amt",
+     "when": "@k_repay_out",
+     "tafsili": "party",
+     "desc": "بازپرداخت قرض"
+    },
+    {
+     "account": "cash",
+     "debit": "@amt",
+     "when": {
+      "op": "or",
+      "args": [
+       "@k_taken",
+       "@k_repay_in"
+      ]
+     }
+    },
+    {
+     "account": "cash",
+     "credit": "@amt",
+     "when": {
+      "op": "or",
+      "args": [
+       "@k_given",
+       "@k_repay_out"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "expense",
+   "doc_type": "expense",
+   "lines": [
+    {
+     "account": "general_expense",
+     "debit": "@amt",
+     "cost_center": "cc",
+     "desc": "هزینهٔ عمومی",
+     "account_dim": "exp_account"
+    },
+    {
+     "account": "cash",
+     "credit": "@pay_cash",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "bank",
+     "credit": "@pay_bank",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "ap",
+     "credit": "@pay_credit",
+     "tafsili": "party",
+     "desc": "هزینهٔ نسیه"
+    }
+   ]
+  },
+  {
+   "id": "bpay",
+   "doc_type": "bpay",
+   "lines": [
+    {
+     "account": "ap",
+     "debit": "@amt",
+     "tafsili": "broker",
+     "desc": "پرداخت کارمزد دلال"
+    },
+    {
+     "account": "cash",
+     "credit": "@amt"
+    }
+   ]
+  },
+  {
+   "id": "owner_draw",
+   "doc_type": "owner_draw",
+   "lines": [
+    {
+     "account": "draws",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@draw_cash",
+       "@draw_bank"
+      ]
+     },
+     "desc": "برداشت صاحب سرمایه"
+    },
+    {
+     "account": "cash",
+     "credit": "@draw_cash",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "bank",
+     "credit": "@draw_bank",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "cash",
+     "debit": "@contrib_cash",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "bank",
+     "debit": "@contrib_bank",
+     "tafsili": "treasury"
+    },
+    {
+     "account": "capital",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@contrib_cash",
+       "@contrib_bank"
+      ]
+     },
+     "desc": "آورده صاحب سرمایه"
+    }
+   ]
+  },
+  {
+   "id": "sep",
+   "doc_type": "sep",
+   "lines": [
+    {
+     "account": "inventory_processed",
+     "debit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         {
+          "op": "add",
+          "args": [
+           "@in_raw",
+           "@in_proc",
+           "@labor",
+           "@transport"
+          ]
+         },
+         "@abnormal"
+        ]
+       }
+      ]
+     },
+     "desc": "ورود خروجی‌های جداسازی به موجودی"
+    },
+    {
+     "account": "waste_loss",
+     "debit": "@abnormal",
+     "desc": "ضایعات غیرعادی جداسازی"
+    },
+    {
+     "account": "inventory",
+     "credit": "@in_raw",
+     "desc": "خروج ورودی‌های جداسازی (خام)"
+    },
+    {
+     "account": "inventory_processed",
+     "credit": "@in_proc",
+     "desc": "خروج ورودی‌های جداسازی (فرآوری‌شده)"
+    },
+    {
+     "account": "cash",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@labor",
+       "@transport"
+      ]
+     },
+     "desc": "دستمزد و حمل جداسازی"
+    }
+   ]
+  },
+  {
+   "id": "proc_send",
+   "doc_type": "proc_send",
+   "lines": [
+    {
+     "account": "inventory_at_processor",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@in_raw",
+       "@in_proc"
+      ]
+     },
+     "desc": "ارسال کالا به فرآورنده"
+    },
+    {
+     "account": "inventory",
+     "credit": "@in_raw"
+    },
+    {
+     "account": "inventory_processed",
+     "credit": "@in_proc"
+    }
+   ]
+  },
+  {
+   "id": "proc_recv",
+   "doc_type": "proc_recv",
+   "lines": [
+    {
+     "account": "inventory_processed",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@in_raw",
+       "@in_proc",
+       "@fee"
+      ]
+     },
+     "desc": "دریافت خروجی فرآوری (بهای ورودی + کرایه)"
+    },
+    {
+     "account": "inventory_at_processor",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@in_raw",
+       "@in_proc"
+      ]
+     }
+    },
+    {
+     "account": "ap",
+     "credit": "@fee",
+     "tafsili": "party",
+     "desc": "کرایه فرآوری"
+    }
+   ]
+  },
+  {
+   "id": "proc_toll",
+   "doc_type": "proc_toll",
+   "lines": [
+    {
+     "account": "ar",
+     "debit": "@charge",
+     "tafsili": "party",
+     "desc": "مطالبه کرایه فراوری امانی"
+    },
+    {
+     "account": "processing_income",
+     "credit": "@charge",
+     "desc": "درآمد خدمات فرآوری"
+    }
+   ]
+  },
+  {
+   "id": "cons_in",
+   "doc_type": "cons_in",
+   "lines": [
+    {
+     "account": "memo_consigned_in",
+     "debit": "@value",
+     "desc": "ثبت انتظامی کالای امانی نزد ما (ارزش توافقی)"
+    },
+    {
+     "account": "memo_consigned_in_contra",
+     "credit": "@value",
+     "desc": "طرف حساب انتظامی کالای امانی"
+    }
+   ]
+  },
+  {
+   "id": "orch_cost",
+   "doc_type": "orch_cost",
+   "lines": [
+    {
+     "account": "orchard_cost",
+     "debit": "@amount",
+     "desc": "هزینهٔ باغ (تا تسهیم)"
+    },
+    {
+     "account": "cash",
+     "credit": "@amount",
+     "desc": "پرداخت هزینهٔ باغ"
+    }
+   ]
+  },
+  {
+   "id": "orch_alloc",
+   "doc_type": "orch_alloc",
+   "lines": [
+    {
+     "account": "inventory",
+     "debit": "@alloc",
+     "desc": "بهای برداشت باغ (تسهیم‌شده به لات)"
+    },
+    {
+     "account": "orchard_cost",
+     "credit": "@alloc",
+     "desc": "خروج هزینهٔ تسهیم‌شده از باغ"
+    }
+   ]
+  },
+  {
+   "id": "cons_sale",
+   "doc_type": "cons_sale",
+   "lines": [
+    {
+     "account": "ar",
+     "debit": "@gross",
+     "tafsili": "party",
+     "desc": "بدهی خریدار (فروش کالای امانی)"
+    },
+    {
+     "account": "cogs",
+     "debit": "@loss",
+     "desc": "زیان فروش امانی (کمتر از قیمت توافقی)"
+    },
+    {
+     "account": "ap",
+     "credit": "@owed",
+     "tafsili": "owner",
+     "desc": "بدهی به مالک کالای امانی"
+    },
+    {
+     "account": "commission_income",
+     "credit": "@comm",
+     "desc": "درآمد کمیسیون/حاشیه فروش امانی"
+    },
+    {
+     "account": "cash",
+     "debit": "@recv_cash"
+    },
+    {
+     "account": "bank",
+     "debit": "@recv_bank"
+    },
+    {
+     "account": "cheque_in_hand",
+     "debit": "@cheque_in"
+    },
+    {
+     "account": "ar",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@recv_cash",
+       "@recv_bank",
+       "@cheque_in"
+      ]
+     },
+     "tafsili": "party",
+     "desc": "دریافت هنگام فروش"
+    }
+   ]
+  },
+  {
+   "id": "cons_pay",
+   "doc_type": "cons_pay",
+   "lines": [
+    {
+     "account": "ap",
+     "debit": "@amount",
+     "tafsili": "owner",
+     "desc": "تسویه با مالک کالای امانی"
+    },
+    {
+     "account": "cash",
+     "credit": "@amount",
+     "desc": "پرداخت به مالک (نقد)"
+    }
+   ]
+  },
+  {
+   "id": "cons_out",
+   "doc_type": "cons_out",
+   "lines": [
+    {
+     "account": "memo_consigned_out",
+     "debit": "@value",
+     "desc": "ثبت انتظامی کالای ما نزد امانت‌گیرنده (بهای تمام‌شده)"
+    },
+    {
+     "account": "memo_consigned_out_contra",
+     "credit": "@value",
+     "desc": "طرف حساب انتظامی"
+    }
+   ]
+  },
+  {
+   "id": "cons_out_sold",
+   "doc_type": "cons_out_sold",
+   "lines": [
+    {
+     "account": "memo_consigned_out_contra",
+     "debit": "@value",
+     "desc": "آزادسازی انتظامی: فروش کالای امانی ارسالی"
+    },
+    {
+     "account": "memo_consigned_out",
+     "credit": "@value",
+     "desc": "آزادسازی انتظامی: فروش کالای امانی ارسالی"
+    }
+   ]
+  },
+  {
+   "id": "cons_out_ret",
+   "doc_type": "cons_out_ret",
+   "lines": [
+    {
+     "account": "memo_consigned_out_contra",
+     "debit": "@value",
+     "desc": "آزادسازی انتظامی: برگشت کالای امانی ارسالی"
+    },
+    {
+     "account": "memo_consigned_out",
+     "credit": "@value",
+     "desc": "آزادسازی انتظامی: برگشت کالای امانی ارسالی"
+    }
+   ]
+  },
+  {
+   "id": "payroll",
+   "doc_type": "payroll",
+   "lines": [
+    {
+     "account": "salary_expense",
+     "debit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         {
+          "op": "add",
+          "args": [
+           "@earnings",
+           "@ins_er"
+          ]
+         },
+         "@misc"
+        ]
+       }
+      ]
+     },
+     "desc": "هزینه حقوق و بیمه سهم کارفرما"
+    },
+    {
+     "account": "insurance_payable",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@ins_emp",
+       "@ins_er"
+      ]
+     },
+     "desc": "بیمه پرداختنی"
+    },
+    {
+     "account": "tax_payable",
+     "credit": "@tax",
+     "desc": "مالیات حقوق پرداختنی"
+    },
+    {
+     "account": "emp_advance",
+     "credit": "@adv",
+     "desc": "کسر مساعده"
+    },
+    {
+     "account": "salary_payable",
+     "credit": "@net",
+     "desc": "خالص حقوق پرداختنی"
+    }
+   ]
+  },
+  {
+   "id": "payroll_adv",
+   "doc_type": "payroll_adv",
+   "lines": [
+    {
+     "account": "emp_advance",
+     "debit": "@amount",
+     "desc": "مساعده کارمند"
+    },
+    {
+     "account": "cash",
+     "credit": "@amount",
+     "desc": "پرداخت مساعده (نقد)"
+    }
+   ]
+  },
+  {
+   "id": "payroll_pay",
+   "doc_type": "payroll_pay",
+   "lines": [
+    {
+     "account": "salary_payable",
+     "debit": "@amount",
+     "desc": "پرداخت حقوق"
+    },
+    {
+     "account": "cash",
+     "credit": "@cash"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank"
+    },
+    {
+     "account": "cheque_payable",
+     "credit": "@cheque"
+    }
+   ]
+  },
+  {
+   "id": "fx_settle_recv",
+   "doc_type": "fx_settle_recv",
+   "lines": [
+    {
+     "account": "cash",
+     "debit": "@cash"
+    },
+    {
+     "account": "bank",
+     "debit": "@bank"
+    },
+    {
+     "account": "fx_diff",
+     "debit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         "@carry",
+         {
+          "op": "add",
+          "args": [
+           "@cash",
+           "@bank"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (تسویه)"
+    },
+    {
+     "account": "ar",
+     "credit": "@carry",
+     "tafsili": "party",
+     "desc": "تسویه مطالبهٔ ارزی به مبلغ دفتری"
+    },
+    {
+     "account": "fx_diff",
+     "credit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         {
+          "op": "add",
+          "args": [
+           "@cash",
+           "@bank"
+          ]
+         },
+         "@carry"
+        ]
+       }
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (تسویه)"
+    }
+   ]
+  },
+  {
+   "id": "fx_settle_pay",
+   "doc_type": "fx_settle_pay",
+   "lines": [
+    {
+     "account": "ap",
+     "debit": "@carry",
+     "tafsili": "party",
+     "desc": "تسویه بدهی ارزی به مبلغ دفتری"
+    },
+    {
+     "account": "fx_diff",
+     "debit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         {
+          "op": "add",
+          "args": [
+           "@cash",
+           "@bank"
+          ]
+         },
+         "@carry"
+        ]
+       }
+      ]
+     },
+     "desc": "زیان تفاوت نرخ ارز (تسویه)"
+    },
+    {
+     "account": "cash",
+     "credit": "@cash"
+    },
+    {
+     "account": "bank",
+     "credit": "@bank"
+    },
+    {
+     "account": "fx_diff",
+     "credit": {
+      "op": "pos",
+      "args": [
+       {
+        "op": "sub",
+        "args": [
+         "@carry",
+         {
+          "op": "add",
+          "args": [
+           "@cash",
+           "@bank"
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "desc": "سود تفاوت نرخ ارز (تسویه)"
+    }
+   ]
+  },
+  {
+   "id": "fx_adjust",
+   "doc_type": "fx_adjust",
+   "lines": [
+    {
+     "account": "ar",
+     "debit": "@ar_up",
+     "tafsili": "party",
+     "desc": "تعدیل نرخ ارز مطالبه (افزایش)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@ar_up",
+     "desc": "سود تعدیل نرخ"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@ar_down",
+     "desc": "زیان تعدیل نرخ"
+    },
+    {
+     "account": "ar",
+     "credit": "@ar_down",
+     "tafsili": "party",
+     "desc": "تعدیل نرخ ارز مطالبه (کاهش)"
+    },
+    {
+     "account": "fx_diff",
+     "debit": "@ap_up",
+     "desc": "زیان تعدیل نرخ"
+    },
+    {
+     "account": "ap",
+     "credit": "@ap_up",
+     "tafsili": "party",
+     "desc": "تعدیل نرخ ارز بدهی (افزایش)"
+    },
+    {
+     "account": "ap",
+     "debit": "@ap_down",
+     "tafsili": "party",
+     "desc": "تعدیل نرخ ارز بدهی (کاهش)"
+    },
+    {
+     "account": "fx_diff",
+     "credit": "@ap_down",
+     "desc": "سود تعدیل نرخ"
+    }
+   ]
+  },
+  {
+   "id": "fx_reval",
+   "doc_type": "fx_reval",
+   "lines": [
+    {
+     "account": "ar",
+     "each": "groups",
+     "tafsili": "party",
+     "debit": "@ar_up",
+     "desc": "تسعیر مطالبات ارزی (افزایش)"
+    },
+    {
+     "account": "fx_unrealized",
+     "credit": "@ar_up",
+     "desc": "سود تسعیر"
+    },
+    {
+     "account": "fx_unrealized",
+     "debit": "@ar_down",
+     "desc": "زیان تسعیر"
+    },
+    {
+     "account": "ar",
+     "each": "groups",
+     "tafsili": "party",
+     "credit": "@ar_down",
+     "desc": "تسعیر مطالبات ارزی (کاهش)"
+    },
+    {
+     "account": "fx_unrealized",
+     "debit": "@ap_up",
+     "desc": "زیان تسعیر"
+    },
+    {
+     "account": "ap",
+     "each": "groups",
+     "tafsili": "party",
+     "credit": "@ap_up",
+     "desc": "تسعیر بدهی‌های ارزی (افزایش)"
+    },
+    {
+     "account": "ap",
+     "each": "groups",
+     "tafsili": "party",
+     "debit": "@ap_down",
+     "desc": "تسعیر بدهی‌های ارزی (کاهش)"
+    },
+    {
+     "account": "fx_unrealized",
+     "credit": "@ap_down",
+     "desc": "سود تسعیر"
+    }
+   ]
+  },
+  {
+   "id": "fx_reval_rev",
+   "doc_type": "fx_reval_rev",
+   "lines": [
+    {
+     "account": "ar",
+     "each": "groups",
+     "tafsili": "party",
+     "desc": "برگشت: تسعیر مطالبات ارزی (افزایش)",
+     "credit": "@ar_up"
+    },
+    {
+     "account": "fx_unrealized",
+     "desc": "برگشت: سود تسعیر",
+     "debit": "@ar_up"
+    },
+    {
+     "account": "fx_unrealized",
+     "desc": "برگشت: زیان تسعیر",
+     "credit": "@ar_down"
+    },
+    {
+     "account": "ar",
+     "each": "groups",
+     "tafsili": "party",
+     "desc": "برگشت: تسعیر مطالبات ارزی (کاهش)",
+     "debit": "@ar_down"
+    },
+    {
+     "account": "fx_unrealized",
+     "desc": "برگشت: زیان تسعیر",
+     "credit": "@ap_up"
+    },
+    {
+     "account": "ap",
+     "each": "groups",
+     "tafsili": "party",
+     "desc": "برگشت: تسعیر بدهی‌های ارزی (افزایش)",
+     "debit": "@ap_up"
+    },
+    {
+     "account": "ap",
+     "each": "groups",
+     "tafsili": "party",
+     "desc": "برگشت: تسعیر بدهی‌های ارزی (کاهش)",
+     "credit": "@ap_down"
+    },
+    {
+     "account": "fx_unrealized",
+     "desc": "برگشت: سود تسعیر",
+     "debit": "@ap_down"
+    }
+   ]
+  },
+  {
+   "id": "count_adj",
+   "doc_type": "count_adj",
+   "lines": [
+    {
+     "account": "count_diff",
+     "debit": {
+      "op": "add",
+      "args": [
+       "@short_raw",
+       "@short_proc"
+      ]
+     },
+     "desc": "کسری انبارگردانی"
+    },
+    {
+     "account": "inventory",
+     "credit": "@short_raw"
+    },
+    {
+     "account": "inventory_processed",
+     "credit": "@short_proc"
+    },
+    {
+     "account": "inventory",
+     "debit": "@over_raw"
+    },
+    {
+     "account": "inventory_processed",
+     "debit": "@over_proc"
+    },
+    {
+     "account": "count_diff",
+     "credit": {
+      "op": "add",
+      "args": [
+       "@over_raw",
+       "@over_proc"
+      ]
+     },
+     "desc": "اضافی انبارگردانی"
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,22 @@
+-- v49 (S27.T27.3+) mirror of pb_mig_49_fx_tx: currency columns on payment/receipt transactions and cheques (cheques is created lazily; skip if absent).
+ALTER TABLE lump_tx ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE lump_tx ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE lump_tx ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE credit_inst ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE credit_inst ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE credit_inst ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE cheque_inst ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE cheque_inst ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE cheque_inst ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE receipt_lump_tx ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE receipt_lump_tx ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE receipt_lump_tx ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE receipt_credit_inst ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE receipt_credit_inst ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE receipt_credit_inst ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE receipt_cheque_inst ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE receipt_cheque_inst ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE receipt_cheque_inst ADD COLUMN fx_rate DECIMAL(18,6) NULL;
+ALTER TABLE cheques ADD COLUMN ccy VARCHAR(8) NULL;
+ALTER TABLE cheques ADD COLUMN ccy_amount DECIMAL(20,4) NULL;
+ALTER TABLE cheques ADD COLUMN fx_rate DECIMAL(18,6) NULL;

@@ -1,0 +1,172 @@
+/* دستیار پسته بازار — استایل رندرکننده (پیشوند pbas- برای جلوگیری از تداخل با style.css) */
+
+.pbas-overlay {
+  --pbas-assistant: #E8F5E9;
+  --pbas-user: #FFFFFF;
+  --pbas-support: #FFF3E0;
+  --pbas-accent: #2e7d32;
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(0, 0, 0, .45);
+  display: flex; align-items: stretch; justify-content: center;
+  font-family: inherit; color: var(--text, #1b1b1b);
+  direction: rtl; text-align: right;
+}
+.pbas-overlay[hidden], .pbas-overlay [hidden] { display: none !important; }
+
+.pbas-sheet {
+  background: var(--bg, #f4f6f4);
+  width: 100%; max-width: 560px; height: 100%;
+  display: flex; flex-direction: column; min-width: 0;
+  box-shadow: 0 0 24px rgba(0, 0, 0, .2);
+}
+@media (min-width: 640px) {
+  .pbas-overlay { align-items: center; padding: 24px; }
+  .pbas-sheet { height: min(86vh, 760px); border-radius: 16px; overflow: hidden; }
+}
+
+.pbas-head {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--primary, #2e7d32); color: #fff;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+}
+.pbas-title { flex: 1; font-weight: 700; font-size: 16px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pbas-icon {
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: transparent; color: #fff; font-size: 20px; cursor: pointer; flex: none;
+}
+.pbas-icon:active { background: rgba(255, 255, 255, .18); }
+
+.pbas-body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  min-width: 0;
+}
+
+.pbas-block { margin-bottom: 12px; min-width: 0; }
+.pbas-h { margin: 6px 0 8px; font-size: 15px; font-weight: 700; }
+.pbas-note { color: var(--muted, #6b6b6b); font-size: 12.5px; margin: 10px 0 0; line-height: 1.7; }
+.pbas-loading { color: var(--muted, #6b6b6b); text-align: center; padding: 40px 0; }
+
+/* حباب‌های گفتگو */
+.pbas-bubble {
+  border-radius: 14px; padding: 10px 12px; max-width: 100%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06); min-width: 0;
+}
+.pbas-role-assistant { background: var(--pbas-assistant); }
+.pbas-role-user { background: var(--pbas-user); border: 1px solid var(--border, #e2e5e1); }
+.pbas-role-support { background: var(--pbas-support); }
+.pbas-text { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; line-height: 1.9; }
+
+/* نوتیس‌ها */
+.pbas-notice { border-radius: 12px; padding: 10px 12px; font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pbas-tone-info { background: #e8f1fb; color: #1a4a7a; }
+.pbas-tone-success { background: #e8f5e9; color: #1b5e20; }
+.pbas-tone-warning { background: #fff4e0; color: #8a5300; }
+.pbas-tone-error { background: #fdecea; color: var(--red, #c62828); }
+
+/* دکمه‌ها */
+.pbas-buttons { display: grid; gap: 8px; }
+.pbas-btn {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  border: none; border-radius: 12px; padding: 12px 14px; margin: 0 0 8px;
+  background: #fff; color: var(--text, #1b1b1b); font: inherit; font-size: 15px; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .08); cursor: pointer; text-align: right; min-width: 0;
+}
+.pbas-btn:disabled { opacity: .55; cursor: default; }
+.pbas-btn-primary { background: var(--pbas-accent); color: #fff; justify-content: center; }
+.pbas-btn-secondary { background: #eceff1; color: var(--text, #1b1b1b); justify-content: center; }
+.pbas-btn-icon { font-size: 20px; flex: none; }
+.pbas-btn-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pbas-badge {
+  background: var(--red, #c62828); color: #fff; border-radius: 999px;
+  font-size: 12px; min-width: 22px; height: 22px; padding: 0 7px;
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+}
+.pbas-link { background: none; border: none; color: var(--red, #c62828); font: inherit; font-size: 13px; padding: 4px 0; cursor: pointer; }
+
+/* انتخاب از فهرست و جستجو */
+.pbas-search {
+  width: 100%; box-sizing: border-box; border: 1px solid var(--border, #e2e5e1);
+  border-radius: 12px; padding: 10px 12px; font: inherit; font-size: 15px; background: #fff; margin-bottom: 8px;
+}
+.pbas-choice-list { display: grid; gap: 6px; }
+.pbas-choice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%;
+  background: #fff; border: 1px solid var(--border, #e2e5e1); border-radius: 12px;
+  padding: 10px 12px; font: inherit; color: var(--text, #1b1b1b); cursor: pointer; text-align: right;
+}
+.pbas-choice[hidden] { display: none !important; }
+.pbas-choice-label { font-weight: 600; overflow-wrap: anywhere; }
+.pbas-choice-sub { font-size: 12.5px; color: var(--muted, #6b6b6b); overflow-wrap: anywhere; }
+
+/* فرم */
+.pbas-form-err { color: var(--red, #c62828); font-size: 13.5px; font-weight: 600; margin: 6px 0; line-height: 1.7; overflow-wrap: anywhere; }
+.pbas-form-err[hidden] { display: none; }
+.pbas-rows { display: grid; gap: 10px; }
+.pbas-row { background: #fff; border-radius: 12px; padding: 10px; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); min-width: 0; }
+.pbas-row-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.pbas-row-no { font-weight: 700; font-size: 13.5px; color: var(--primary, #2e7d32); }
+.pbas-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pbas-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pbas-field-label { font-size: 12.5px; color: var(--muted, #6b6b6b); }
+.pbas-field-hint { font-size: 11.5px; color: var(--muted, #6b6b6b); line-height: 1.6; }
+.pbas-input {
+  width: 100%; box-sizing: border-box; min-width: 0;
+  border: 1px solid var(--border, #cfd6cd); border-radius: 10px; padding: 9px 10px;
+  font: inherit; font-size: 16px; background: #fff; color: var(--text, #1b1b1b);
+}
+.pbas-input:focus, .pbas-search:focus { outline: 2px solid var(--pbas-accent); outline-offset: 0; }
+.pbas-form .pbas-btn { margin-top: 6px; }
+@media (max-width: 380px) { .pbas-fields { grid-template-columns: minmax(0, 1fr); } }
+
+/* جدول (داخل خودش اسکرول می‌شود؛ صفحه افقی اسکرول نمی‌شود) */
+.pbas-table-wrap { overflow-x: auto; max-width: 100%; background: #fff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.pbas-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.pbas-table th, .pbas-table td { padding: 8px 10px; border-bottom: 1px solid var(--border, #e2e5e1); white-space: nowrap; text-align: right; }
+.pbas-table th { color: var(--muted, #6b6b6b); font-weight: 600; background: #fafbf9; }
+.pbas-table td { overflow-wrap: normal; }
+.pbas-table .pbas-end { text-align: left; direction: ltr; }
+.pbas-table tfoot td { font-weight: 700; background: #f3f7f1; border-bottom: 0; }
+.pbas-table td:not(.pbas-end) { white-space: normal; min-width: 80px; }
+
+/* کارت خلاصه */
+.pbas-card { background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); min-width: 0; }
+.pbas-confirm { border: 1px solid var(--border, #e2e5e1); }
+.pbas-card-title { font-weight: 700; margin-bottom: 6px; overflow-wrap: anywhere; }
+.pbas-line { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; min-width: 0; }
+.pbas-line + .pbas-line { border-top: 1px dashed var(--border, #e2e5e1); }
+.pbas-line-label { color: var(--muted, #6b6b6b); font-size: 13.5px; min-width: 0; overflow-wrap: anywhere; }
+.pbas-line-value { font-weight: 700; text-align: left; direction: ltr; overflow-wrap: anywhere; min-width: 0; }
+.pbas-pos { color: var(--green, #2e7d32); }
+.pbas-neg { color: var(--red, #c62828); }
+.pbas-warn { color: #8a5300; }
+.pbas-highlight { margin-top: 8px; padding: 10px; border-radius: 10px; background: #eef5ea; color: var(--primary-dark, #1b5e20); font-weight: 800; font-size: 17px; text-align: center; overflow-wrap: anywhere; }
+
+/* چت پشتیبانی */
+.pbas-log {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 52vh; overflow-y: auto; overflow-x: hidden; min-width: 0;
+  padding: 10px; border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+}
+.pbas-msg { display: flex; min-width: 0; }
+.pbas-from-user { justify-content: flex-end; }
+.pbas-from-support, .pbas-from-assistant { justify-content: flex-start; }
+.pbas-msg .pbas-bubble { max-width: min(82%, 480px); }
+.pbas-msg-time { font-size: 11px; color: var(--muted, #6b6b6b); margin-top: 4px; direction: ltr; text-align: start; }
+.pbas-chat-status:empty { display: none; }
+.pbas-chat-status .pbas-notice { margin-bottom: 8px; }
+.pbas-chat-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 10px; }
+.pbas-chat-input { resize: vertical; min-height: 44px; }
+.pbas-send { width: auto; margin: 0; padding: 11px 16px; }
+
+@media (max-width: 380px) {
+  .pbas-chat-form { grid-template-columns: minmax(0, 1fr); }
+  .pbas-send { width: 100%; }
+}
+
+/* پسته‌کاو (A5): فیلد پرسش و حالت انتظار */
+.pbas-ai-input { min-height: 64px; max-height: 40vh; resize: vertical; line-height: 1.8; }
+.pbas-ai-input:disabled { opacity: .6; }
+.pbas-ai-pending { padding: 16px 0; animation: pbas-pulse 1.4s ease-in-out infinite; }
+@keyframes pbas-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .pbas-ai-pending { animation: none; } }

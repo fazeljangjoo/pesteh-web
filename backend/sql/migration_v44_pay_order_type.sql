@@ -1,0 +1,3 @@
+-- v44 (S22.T22.3c) mirror of pb_mig_44_pay_order_type
+-- pay_orders.order_type must accept 'tier_upgrade' (12 chars). Run only if SHOW COLUMNS shows an ENUM / VARCHAR(<12):
+-- ALTER TABLE pay_orders MODIFY COLUMN order_type VARCHAR(20) NOT NULL DEFAULT 'renew';

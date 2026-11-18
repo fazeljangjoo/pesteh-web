@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-src 'none'">
+<title>پسته بازار</title>
+<meta name="theme-color" content="#2e7d32">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/apple-touch-icon-152.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="پسته بازار">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="application-name" content="پسته بازار">
+<meta name="msapplication-TileColor" content="#2e7d32">
+<meta name="msapplication-TileImage" content="icons/mstile-150.png">
+<meta name="msapplication-config" content="browserconfig.xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="login-view" class="screen">
+  <div class="login-box">
+    <img class="logo-img" src="icons/logo.png" alt="پسته بازار" width="84" height="84">
+    <h1>پسته بازار</h1>
+    <p class="muted" id="login-sub">ورود با شماره موبایل و کد پیامکی</p>
+    <form id="login-form">
+      <div id="login-step-phone">
+        <label id="login-phone-label">شماره موبایل</label>
+        <input type="tel" id="login-phone" inputmode="numeric" autocomplete="tel" placeholder="09xxxxxxxxx" required>
+      </div>
+      <div id="login-step-pass" class="hidden">
+        <div id="login-staff-wrap" class="hidden">
+          <label>نام کاربری</label>
+          <input type="text" id="login-staff-user" autocomplete="username" maxlength="60" placeholder="نام کاربری">
+        </div>
+        <label>رمز عبور</label>
+        <input type="password" id="login-pass" autocomplete="current-password" maxlength="200" placeholder="رمز عبور">
+      </div>
+      <div id="login-step-code" class="hidden">
+        <label>کد پیامکی (ارسال‌شده به <span id="login-phone-show"></span>)</label>
+        <input type="tel" id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="کد را وارد کنید">
+        <div class="login-links">
+          <button type="button" id="login-resend" class="link-btn" disabled>ارسال دوباره کد</button>
+          <button type="button" id="login-change" class="link-btn">تغییر شماره</button>
+        </div>
+      </div>
+      <div id="login-step-name" class="hidden">
+        <label>نام و نام خانوادگی (برای ساخت حساب جدید)</label>
+        <input type="text" id="login-name" autocomplete="name" maxlength="60" placeholder="مثلاً علی رضایی">
+        <div class="login-links"><button type="button" id="login-name-back" class="link-btn">تغییر شماره</button></div>
+      </div>
+      <div id="login-step-newpass" class="hidden">
+        <label>یک رمز عبور برای حساب خود تعیین کنید (حداقل ۶ کاراکتر)</label>
+        <input type="password" id="login-newpass" autocomplete="new-password" maxlength="72" placeholder="رمز عبور">
+        <label>تکرار رمز عبور</label>
+        <input type="password" id="login-newpass2" autocomplete="new-password" maxlength="72" placeholder="تکرار رمز عبور">
+        <div class="login-links"><button type="button" id="login-newpass-back" class="link-btn">بازگشت</button></div>
+      </div>
+      <div id="login-error" class="error"></div>
+      <button type="submit" id="login-btn">دریافت کد ورود</button>
+      <button type="button" id="login-staff-mode" class="staff-btn">👤 ورود پرسنل</button>
+      <div class="login-links" style="justify-content:center">
+        <button type="button" id="login-mode" class="link-btn">ورود با رمز عبور</button>
+      </div>
+    </form>
+    <p class="muted login-note">کاربر جدید: ۱۰ روز اشتراک آزمایشی رایگان</p>
+    <div class="credit">قدرت‌گرفته از تیم نرم‌افزاری <b>فاضل جنگجو</b></div>
+  </div>
+</div>
+
+<div id="app-view" class="screen hidden">
+  <header class="topbar">
+    <div class="topbar-title" id="page-title">خانه</div>
+    <div class="topbar-right">
+      <button id="sync-badge" class="sync-badge hidden" title="برای ارسال دوباره ضربه بزنید"></button>
+      <span id="offline-badge" class="offline-badge hidden" title="آفلاین">📴</span>
+      <button id="assistant-btn" class="icon-btn hidden" title="دستیار" aria-label="دستیار پسته بازار">🤖</button>
+      <button id="menu-btn" class="icon-btn" title="منو" aria-label="منوی ماژول‌ها">☰</button>
+      <button id="settings-btn" class="icon-btn" title="بیشتر">⚙️</button>
+      <button id="logout-btn" class="icon-btn" title="خروج" aria-label="خروج">
+        <svg class="icon-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="content"></main>
+
+  <nav class="tabbar">
+    <button class="tab" data-tab="home"><span>🏠</span><small>خانه</small></button>
+    <button class="tab" data-tab="inventory"><span>📦</span><small>انبار</small></button>
+    <button class="tab" data-tab="sales"><span>🧾</span><small>فروش</small></button>
+    <button class="tab" data-tab="parties"><span>👥</span><small>طرف‌حساب</small></button>
+    <button class="tab" data-tab="dues"><span>⏰</span><small>سررسید</small></button>
+  </nav>
+</div>
+
+<div id="drawer-overlay" class="drawer-overlay hidden"></div>
+<aside id="drawer" class="drawer hidden" aria-label="منوی ماژول‌ها">
+  <div class="drawer-top"><b>منو</b><button type="button" id="drawer-close" class="icon-btn" aria-label="بستن">✕</button></div>
+  <div id="drawer-body"></div>
+</aside>
+
+<div id="contract-view" class="screen hidden"></div>
+<div id="toast" class="toast hidden"></div>
+<div id="modal-root"></div>
+
+<script src="fmt.js"></script>
+<script src="code_kind.js"></script>
+<script src="pay.js"></script>
+<script src="shell.js"></script>
+<script src="modules_s21.js"></script>
+<script src="pricing.js"></script>
+<script src="sync_rt.js"></script>
+<script src="modules_intake.js"></script>
+<script src="modules_crack.js"></script>
+<script src="modules_trace.js"></script>
+<script src="modules_cartex.js"></script>
+<script src="barcode.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
